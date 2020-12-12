@@ -1,39 +1,117 @@
 <script>
-	let items = [{"title": "Clean room", "desc" : ''}, {"title": "Code this app", "desc" : 'a description'}]
+	import { quintOut } from 'svelte/easing';
+	import { crossfade } from 'svelte/transition';
 
-	let data = [];
+	let items = [{"id": 1, "title": "Clean room", "desc" : '', "done": false}, {"id": 2, "title": "Code this app", "desc" : 'a description', "done": false}];
 
-	data.push({"name": "To Do", "items": items});
-	data.push({"name": "Done", "items": items});
+	let id = 3;
+
+	const [send, receive] = crossfade({
+		duration: d => Math.sqrt(d * 200),
+
+		fallback(node, params) {
+			const style = getComputedStyle(node);
+			const transform = style.transform === 'none' ? '' : style.transform;
+
+			return {
+				duration: 600,
+				easing: quintOut,
+				css: t => `
+					transform: ${transform} scale(${t});
+					opacity: ${t}
+				`
+			};
+		}
+	});
+
+
+	function addItem(input) {
+		if (input.value) {
+		console.log('working sort of');
+		
+		let newItem = {id: id++, title: input.value, desc: '', done: false}
+		// items.push(newItem);
+
+		items = [...items, newItem];
+		input.value = '';
+		}
+	}
+
+	function remove(todo) {
+		items = items.filter(t => t !== todo);
+	}
+
+	function markAsDone(todo, done) {
+		todo.done = done;
+		remove(todo);
+		items = items.concat(todo);
+	}
 
 </script>
 
 <main>
+	<div class="input">
+		<h2>
+			Enter an item
+		</h2>
+		<input type="text" on:keydown={e => e.key === 'Enter' && addItem(e.target)}>
+	</div>
+
 	<div class="main-container">
-		{#each data as list, index}
 			<div class="list">
 				<h2>
-					{list["name"]}
+					Todo
 				</h2>
 
-				{#each list["items"] as item, index}
-				<div class="item">
-					<h4>{item["title"]}</h4>
-					<p>{item["desc"]}</p>
-				</div>
-			{/each}
+				{#each items.filter((obj) => !obj["done"]) as item, index (item["id"])}
+					<div class="item" on:click={markAsDone(item, true)} in:receive="{{key: item.id}}"
+					out:send="{{key: item.id}}">
+						<h4>{item["title"]}</h4>
+						<p>{item["desc"]}</p>
+					</div>
+				{/each}
 			</div>
-		{/each}
+			<div class="list">
+				<h2>
+					Done
+				</h2>
+
+				{#each items.filter((obj) => obj["done"]) as item, index (item["id"])}
+					<div class="completed item" on:click={markAsDone(item, false)} 	in:receive="{{key: item.id}}"
+					out:send="{{key: item.id}}">
+						<h4>{item["title"]}</h4>
+						<p>{item["desc"]}</p>
+					</div>
+				{/each}
+			</div>
 	</div>
 </main>
 
 <style>
+	.completed {
+		background-color: greenyellow !important;
+	}
+
+	.input h2 {
+		margin: 5px;
+	}
+
+	.input input {
+		width: 60%;
+		max-width: 550px;
+	}
+
+	/* .input input {
+		margin-bottom: 40px;
+	} */
+
 	.item {
 		background-color: #ffe5c4;
 		padding: 4px;
 		border-radius: 5px;
 		text-align: left;
 		margin: 5px;
+		cursor: pointer;
 	}
 
 	.item:hover {
@@ -57,7 +135,7 @@
 		width: 200px;
 		padding: 5px;
 		text-align: center;
-		margin: 10px auto;
+		margin: 10px 40px;
 		border-radius: 5px;
 	}
 
